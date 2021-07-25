@@ -533,6 +533,12 @@
     }
   }
 
+   [feature = 'man_made_survey_point'][zoom >= 19] {
+    marker-file: url('symbols/man_made/survey_point.svg');
+    marker-fill: @man-made-icon;
+    marker-clip: false;
+  }
+
   [feature = 'man_made_telescope']["telescope:type" != 'optical']["telescope:type" != null] {
     [zoom >= 14]["telescope:diameter" >= 60],
     [zoom >= 15]["telescope:diameter" >= 30],
