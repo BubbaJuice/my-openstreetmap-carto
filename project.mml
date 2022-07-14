@@ -49,6 +49,7 @@ Stylesheet:
   - style/aerialways.mss
   - style/admin.mss
   - style/addressing.mss
+  - style/golf.mss
 Layer:
   - id: landcover-low-zoom
     geometry: polygon
@@ -87,10 +88,11 @@ Layer:
       table: |-
         (SELECT
             way, name, religion, way_pixels, is_building,
-            COALESCE(aeroway, amenity, wetland, power, landuse, leisure, man_made, "natural", shop, tourism, highway, railway) AS feature
+            COALESCE(aeroway, golf, amenity, wetland, power, landuse, leisure, man_made, "natural", shop, tourism, highway, railway) AS feature
           FROM (SELECT
               way, COALESCE(name, '') AS name,
               ('aeroway_' || (CASE WHEN aeroway IN ('apron', 'aerodrome') THEN aeroway END)) AS aeroway,
+              ('golf_' || (CASE WHEN (tags->'golf') IN ('rough', 'fairway', 'driving_range', 'water_hazard', 'green', 'bunker', 'tee') THEN tags->'golf' ELSE NULL END)) AS golf,
               ('amenity_' || (CASE WHEN amenity IN ('bicycle_parking', 'motorcycle_parking', 'university', 'college', 'school', 'taxi',
                                                     'hospital', 'kindergarten', 'grave_yard', 'prison', 'place_of_worship', 'clinic', 'ferry_terminal',
                                                     'marketplace', 'community_centre', 'social_facility', 'arts_centre', 'parking_space', 'bus_station',
@@ -119,6 +121,7 @@ Layer:
             WHERE (landuse IS NOT NULL
               OR leisure IS NOT NULL
               OR aeroway IN ('apron', 'aerodrome')
+              OR (tags->'golf') IS NOT NULL
               OR amenity IN ('parking', 'bicycle_parking', 'motorcycle_parking', 'taxi', 'university', 'college', 'school', 'hospital', 'kindergarten',
                              'grave_yard', 'place_of_worship', 'prison', 'clinic', 'ferry_terminal', 'marketplace', 'community_centre', 'social_facility',
                              'arts_centre', 'parking_space', 'bus_station', 'fire_station', 'police')
@@ -161,26 +164,6 @@ Layer:
         ) AS icesheet_polygons
     properties:
       minzoom: 5
-  - id: water-lines-casing
-    geometry: linestring
-    <<: *extents
-    Datasource:
-      <<: *osm2pgsql
-      table: |-
-        (SELECT
-            way,
-            waterway,
-            CASE WHEN tags->'intermittent' IN ('yes')
-              OR tags->'seasonal' IN ('yes', 'spring', 'summer', 'autumn', 'winter', 'wet_season', 'dry_season')
-              THEN 'yes' ELSE 'no' END AS int_intermittent,
-            CASE WHEN tunnel IN ('yes', 'culvert') 
-              OR waterway='canal' AND tunnel = 'flooded'
-              THEN 'yes' ELSE 'no' END AS int_tunnel
-          FROM planet_osm_line
-          WHERE waterway IN ('stream', 'drain', 'ditch')
-        ) AS water_lines_casing
-    properties:
-      minzoom: 13
   - id: water-lines-low-zoom
     geometry: linestring
     <<: *extents
@@ -652,8 +635,9 @@ Layer:
           WHERE p.highway IN (
             'turning_circle',
             'turning_loop',
-            'mini_roundabout'
-          )
+            'mini_roundabout')
+            AND l.way && !bbox!
+            AND p.way && !bbox! -- Both conditions are necessary for good index usage, even with the DWithin above
           ORDER BY p.way, v.prio
         ) AS turning_circle_sql
     properties:
@@ -1044,6 +1028,19 @@ Layer:
     properties:
       cache-features: true
       minzoom: 11
+  - id: golf-line
+    geometry: linestring
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way, tags->'golf' AS golf
+          FROM planet_osm_line
+          WHERE tags @> 'golf=>hole'
+        ) AS golf_line
+    properties:
+      minzoom: 16
   - id: necountries
     geometry: linestring
     <<: *extents
@@ -1467,7 +1464,8 @@ Layer:
                     WHEN (tags ? 'ele') AND tags->'ele' ~ '^-?\d{1,4}(\.\d+)?$'
                       AND ("natural" IN ('peak', 'volcano', 'saddle')
                         OR tourism = 'alpine_hut' OR (tourism = 'information' AND tags->'information' = 'guidepost')
-                        OR amenity = 'shelter')
+                        OR amenity = 'shelter'
+                        OR tags->'mountain_pass' = 'yes')
                     THEN CONCAT(REPLACE(ROUND((tags->'ele')::NUMERIC)::TEXT, '-', U&'\2212'), U&'\00A0', 'm') END,
                   CASE
                     WHEN (tags ? 'height') AND tags->'height' ~ '^\d{1,3}(\.\d+)?$'
@@ -1513,6 +1511,7 @@ Layer:
                 'natural_' || CASE WHEN "natural" IN ('wood', 'water', 'mud', 'wetland', 'bay', 'spring', 'scree', 'shingle', 'bare_rock', 'sand', 'heath',
                                                       'grassland', 'scrub', 'beach', 'glacier', 'tree', 'strait', 'cape')
                                                       THEN "natural" END,
+                'mountain_pass' || CASE WHEN tags->'mountain_pass' IN ('yes') THEN '' END, -- after natural=saddle to give priority to that tag on the same node
                 'waterway_' || CASE WHEN "waterway" IN ('waterfall') AND way_area IS NULL THEN waterway END,
                 'place_' || CASE WHEN place IN ('island', 'islet', 'square') THEN place END,
                 'historic_' || CASE WHEN historic IN ('memorial', 'monument', 'archaeological_site', 'fort', 'castle', 'manor', 'city_gate')
@@ -1536,11 +1535,13 @@ Layer:
                                         AND way_area IS NULL
                                    THEN amenity END,
                 'tourism_' || CASE WHEN tourism IN ('viewpoint', 'attraction') THEN tourism END,
-                'place_' || CASE WHEN place IN ('locality') AND way_area IS NULL THEN place END
+                'place_' || CASE WHEN place IN ('locality') AND way_area IS NULL THEN place END,
+                'golf_' || CASE WHEN tags->'golf' IN ('hole', 'pin') THEN tags->'golf' END
               ) AS feature,
               access,
               CASE
-                WHEN "natural" IN ('peak', 'volcano', 'saddle') THEN
+                WHEN "natural" IN ('peak', 'volcano', 'saddle') 
+                     OR tags->'mountain_pass' = 'yes' THEN
                   CASE
                     WHEN tags->'ele' ~ '^-?\d{1,4}(\.\d+)?$' THEN (tags->'ele')::NUMERIC
                   END
@@ -2007,7 +2008,7 @@ Layer:
         (SELECT
           way,
             NULL as way_pixels,
-            COALESCE('aerialway_' || aerialway, 'attraction_' || CASE WHEN tags @> 'attraction=>water_slide' THEN 'water_slide' END, 'leisure_' || leisure, 'man_made_' || man_made, 'waterway_' || waterway, 'natural_' || "natural") AS feature,
+            COALESCE('aerialway_' || aerialway, 'attraction_' || CASE WHEN tags @> 'attraction=>water_slide' THEN 'water_slide' END, 'leisure_' || leisure, 'man_made_' || man_made, 'waterway_' || waterway, 'natural_' || "natural", 'golf_' || (tags->'golf')) AS feature,
             access,
             name,
             tags->'operator' as operator,
@@ -2015,7 +2016,7 @@ Layer:
             NULL AS way_area,
             CASE WHEN building = 'no' OR building IS NULL THEN 'no' ELSE 'yes' END AS is_building
           FROM planet_osm_line
-          WHERE (man_made IN ('pier', 'breakwater', 'groyne', 'embankment')
+          WHERE ((man_made IN ('pier', 'breakwater', 'groyne', 'embankment')
               OR (man_made = 'pipeline'
                  AND tags-> 'location' IN ('overground', 'overhead', 'surface', 'outdoor')
                  OR bridge IN ('yes', 'aqueduct', 'cantilever', 'covered', 'trestle', 'viaduct'))
@@ -2024,7 +2025,8 @@ Layer:
               OR leisure IN ('slipway', 'track')
               OR waterway IN ('dam', 'weir')
               OR "natural" IN ('arete', 'cliff', 'ridge'))
-            AND name IS NOT NULL
+            AND name IS NOT NULL)
+            OR (tags @> 'golf=>hole' AND ref IS NOT NULL)
         ) AS text_line
     properties:
       minzoom: 10

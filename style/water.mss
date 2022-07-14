@@ -28,14 +28,29 @@
       [way_pixels >= 64] { polygon-gamma: 0.6; }
     }
     [int_intermittent = 'yes'] {
-      polygon-pattern-file: url('symbols/intermittent_water.png');
+      polygon-pattern-file: url('patterns/intermittent_water.svg');
       [way_pixels >= 4] { polygon-pattern-gamma: 0.75; }
       [way_pixels >= 64] { polygon-pattern-gamma: 0.6; }
     }
   }
 }
 
-#water-lines-casing {
+#water-lines-low-zoom {
+  [waterway = 'river'][zoom >= 8][zoom < 12] {
+    [int_intermittent = 'yes'] {
+      line-dasharray: 8,4;
+      line-cap: butt;
+      line-join: round;
+      line-clip: false;
+    }
+    line-color: @water-color;
+    line-width: 0.7;
+    [zoom >= 9] { line-width: 1.2; }
+    [zoom >= 10] { line-width: 1.6; }
+  }
+}
+
+#water-lines::casing {
   [waterway = 'stream'],
   [waterway = 'ditch'],
   [waterway = 'drain'] {
@@ -55,21 +70,6 @@
         }
       }
     }
-  }
-}
-
-#water-lines-low-zoom {
-  [waterway = 'river'][zoom >= 8][zoom < 12] {
-    [int_intermittent = 'yes'] {
-      line-dasharray: 8,4;
-      line-cap: butt;
-      line-join: round;
-      line-clip: false;
-    }
-    line-color: @water-color;
-    line-width: 0.7;
-    [zoom >= 9] { line-width: 1.2; }
-    [zoom >= 10] { line-width: 1.6; }
   }
 }
 

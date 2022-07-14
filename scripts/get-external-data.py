@@ -49,12 +49,12 @@ class Table:
         self._dst_schema = schema
         self._metadata_table = metadata_table
 
-    # Clean up the temporary schema in preperation for loading
+    # Clean up the temporary schema in preparation for loading
     def clean_temp(self):
         with self._conn.cursor() as cur:
             cur.execute('''DROP TABLE IF EXISTS "{temp_schema}"."{name}"'''
                         .format(name=self._name, temp_schema=self._temp_schema))
-        self._conn.commit()
+            self._conn.commit()
 
     # get the last modified date from the metadata table
     def last_modified(self):
@@ -64,6 +64,7 @@ class Table:
             results = cur.fetchone()
             if results is not None:
                 return results[0]
+            self._conn.commit()
 
     def grant_access(self, user):
         with self._conn.cursor() as cur:
@@ -98,7 +99,7 @@ class Table:
             # matter since it'll never need a vacuum.
             cur.execute('''ALTER TABLE "{temp_schema}"."{name}" RESET ( autovacuum_enabled );'''
                         .format(name=self._name, temp_schema=self._temp_schema))
-        self._conn.commit()
+            self._conn.commit()
 
         # VACUUM can't be run in transaction, so autocommit needs to be turned on
         old_autocommit = self._conn.autocommit
@@ -133,6 +134,90 @@ class Table:
         self._conn.commit()
 
 
+class Downloader:
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({'User-Agent': 'get-external-data.py/osm-carto'})
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.session.close()
+
+    def _download(self, url, headers=None):
+        if url.startswith('file://'):
+            filename = url[7:]
+            if headers and 'If-Modified-Since' in headers and os.path.exists(filename):
+                if str(os.path.getmtime(filename)) == headers['If-Modified-Since']:
+                    return DownloadResult(status_code = requests.codes.not_modified)
+            with open(filename, 'rb') as fp:
+                return DownloadResult(status_code = 200, content = fp.read(),
+                                      last_modified = str(os.fstat(fp.fileno()).st_mtime))
+        response = self.session.get(url, headers=headers)
+        response.raise_for_status()
+        return DownloadResult(status_code = response.status_code, content = response.content,
+                              last_modified = response.headers.get('Last-Modified', None))
+
+    @staticmethod
+    def _return_or_raise(response):
+        if response.status_code != requests.codes.ok:
+            raise RuntimeError('Unsupported HTTP response code {}, expected {} OK'.format(
+                response.status_code, requests.codes.ok))
+        return response
+
+    def download(self, url):
+        response = self._download(url)
+        return self._return_or_raise(response)
+
+    def download_if_newer(self, url, last_modified):
+        headers = {}
+        if last_modified:
+            headers['If-Modified-Since'] = last_modified
+        response = self._download(url, headers)
+        if response.status_code == requests.codes.not_modified:
+            return None
+        return self._return_or_raise(response)
+
+    def download_cache(self, url, last_modified):
+        filename = os.path.basename(url)
+        filename_lastmod = filename + '.lastmod'
+
+        # Check if cached version exists
+        if os.path.exists(filename) and os.path.exists(filename_lastmod):
+            with open(filename_lastmod, 'r') as fp:
+                lastmod = fp.read()
+            # Revalidate cache entry
+            result = self.download_if_newer(url, lastmod)
+
+            # Check if cache is up to date and DB last modified differs
+            if result is None and lastmod != last_modified:
+                with open(filename, 'rb') as fp:
+                    # Return cached document
+                    return DownloadResult(status_code = 200, content = fp.read(),
+                                          last_modified = lastmod)
+        else:
+            # Download a file normally, no cached version
+            result = self.download(url)
+
+        # We had a cache miss or nothing in cache
+        if result is not None and result.last_modified is not None:
+            # Cache downloaded file
+            with open(filename, 'wb') as fp:
+                fp.write(result.content)
+            with open(filename_lastmod, 'w') as fp:
+                fp.write(result.last_modified)
+
+        return result
+
+
+class DownloadResult:
+    def __init__(self, status_code, content=None, last_modified=None):
+        self.status_code = status_code
+        self.content = content
+        self.last_modified = last_modified
+
+
 def main():
     # parse options
     parser = argparse.ArgumentParser(
@@ -140,6 +225,8 @@ def main():
 
     parser.add_argument("-f", "--force", action="store_true",
                         help="Download new data, even if not required")
+    parser.add_argument("-C", "--cache", action="store_true",
+                        help="Cache downloaded data and use cache if possible")
 
     parser.add_argument("-c", "--config", action="store", default="external-data.yml",
                         help="Name of configuration file (default external-data.yml)")
@@ -173,6 +260,8 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
+    logging.info("Starting load of external data into database")
+
     with open(opts.config) as config_file:
         config = yaml.safe_load(config_file)
         data_dir = opts.data or config["settings"]["data_dir"]
@@ -188,13 +277,12 @@ def main():
 
         renderuser = opts.renderuser or config["settings"].get("renderuser")
 
-        with requests.Session() as s, \
-            psycopg2.connect(database=database,
+        with Downloader() as d:
+            conn = None
+            conn = psycopg2.connect(database=database,
                              host=host, port=port,
                              user=user,
-                             password=password) as conn:
-
-            s.headers.update({'User-Agent': 'get-external-data.py/osm-carto'})
+                             password=password)
 
             # DB setup
             database_setup(conn, config["settings"]["temp_schema"],
@@ -222,20 +310,20 @@ def main():
                                    config["settings"]["metadata_table"])
                 this_table.clean_temp()
 
-                if not opts.force:
-                    headers = {'If-Modified-Since': this_table.last_modified()}
+                if opts.force:
+                    download = d.download(source["url"])
+                elif opts.cache:
+                    download = d.download_cache(source["url"], this_table.last_modified())
                 else:
-                    headers = {}
+                    download = d.download_if_newer(source["url"], this_table.last_modified())
 
-                download = s.get(source["url"], headers=headers)
-                download.raise_for_status()
+                if download is None:
+                    logging.info("  Table {} did not require updating".format(name))
+                else:
+                    logging.info("  Download complete ({} bytes)".format(len(download.content)))
 
-                if (download.status_code == 200):
-                    if "Last-Modified" in download.headers:
-                        new_last_modified = download.headers["Last-Modified"]
-                    else:
-                        new_last_modified = None
                     if "archive" in source and source["archive"]["format"] == "zip":
+                        logging.info("  Decompressing file")
                         zip = zipfile.ZipFile(io.BytesIO(download.content))
                         for member in source["archive"]["files"]:
                             zip.extract(member, workingdir)
@@ -264,6 +352,7 @@ def main():
                     ogrcommand += [ogrpg,
                                    os.path.join(workingdir, source["file"])]
 
+                    logging.info("  Importing into database")
                     logging.debug("running {}".format(
                         subprocess.list2cmdline(ogrcommand)))
 
@@ -278,16 +367,19 @@ def main():
                         logging.critical("Command line was {}".format(
                             subprocess.list2cmdline(e.cmd)))
                         logging.critical("Output was\n{}".format(e.output))
+                        logging.critical("Error was\n{}".format(e.stderr))
                         raise RuntimeError(
                             "ogr2ogr error when loading table {}".format(name))
+
+                    logging.info("  Import complete")
 
                     this_table.index()
                     if renderuser is not None:
                         this_table.grant_access(renderuser)
-                    this_table.replace(new_last_modified)
-                else:
-                    logging.info(
-                        "Table {} did not require updating".format(name))
+                    this_table.replace(download.last_modified)
+
+            if conn:
+                conn.close()
 
 
 if __name__ == '__main__':
