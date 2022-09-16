@@ -1,8 +1,21 @@
-## [Unreleased](https://github.com/gravitystorm/openstreetmap-carto/compare/v5.5.1...master)
+## [Unreleased](https://github.com/gravitystorm/openstreetmap-carto/compare/v5.6.1...master)
+
+## [Unreleased](https://github.com/gravitystorm/openstreetmap-carto/compare/v5.6.0...v5.6.1) - 2022-08-12
+### Changes
+- Rendering of water areas on zooms 0 to 4 fixed (#4640)
+
+## [v5.6.0](https://github.com/gravitystorm/openstreetmap-carto/compare/v5.5.1...v5.6.0) - 2022-08-03
+### Major Changes
+- The style now uses locally installed fonts, using `scripts/get-fonts.sh` to download the fonts.
+
 ### Changes
 - Code and performance improvements (#4591, #4601)
 - Recommend disabling PostgreSQL JIT for rendering (#4592)
 - Change tree and tree row colours to the same colour as areas with trees (#4448)
+- Don't label public transport shelters with elevation (#4313)
+- Update code of conduct to explicitly prohibit doxxing (#4554)
+- Add parcel lockers (#4512)
+- Render name labels of bays and straights from z14 only, and lakes from z5 (#3750)
 
 ## [v5.5.1](https://github.com/gravitystorm/openstreetmap-carto/compare/v5.5.0...v5.5.1) - 2022-07-13
 ### Changes
