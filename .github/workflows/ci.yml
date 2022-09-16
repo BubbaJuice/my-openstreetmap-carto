@@ -10,10 +10,15 @@ jobs:
     - uses: actions/setup-python@v4
       with:
         python-version: 3.7
+    - uses: actions/setup-node@v3
+      with:
+        node-version: 16
     - name: Install python dependencies
       run: pip install pyyaml colormath
     - name: Set up xmllint
       run: sudo apt-get install -qq --no-install-recommends libxml2-utils
+    - name: Set up CartoCSS
+      run: npm install -g carto@1.2.0
     - name: Set up shell
       run: set -o pipefail
     - name: Validate YAML files
@@ -24,17 +29,24 @@ jobs:
       run: find symbols/ -name '*.svg' | xargs xmllint --noout
     - name: Check indexes are up to date
       run: diff -qu <(scripts/indexes.py) indexes.sql
-    - name: Check road colours are up to date
+    - name: Check colors of paved roads are up to date
       run: diff -qu <(scripts/generate_road_colours.py) style/road-colors-generated.mss
+    - name: Check colors of unpaved roads are up to date
+      run: |
+        cp -r symbols/unpaved temp
+        scripts/generate_unpaved_patterns.py
+        diff -qu temp symbols/unpaved
     - name: Check for unsupported class usage
       run: '! grep "class:" project.mml > /dev/null'
+    - name: Validate with CartoCSS
+      run: 'carto project.mml --api 3.0.22 --quiet > /dev/null'
   import:
     needs: [syntax]
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
     - name: Install osm2pgsql and database
-      run: sudo apt-get install -qq --no-install-recommends osm2pgsql postgresql-14-postgis-3
+      run: sudo apt-get install -qq --no-install-recommends osm2pgsql postgresql-14-postgis-3 gdal-bin
     - name: Wait for database
       run : sudo pg_ctlcluster 14 main start; until pg_isready; do sleep 0.5; done
     - name: Setup database
@@ -44,3 +56,7 @@ jobs:
         osm2pgsql -G --hstore --style openstreetmap-carto.style --tag-transform-script openstreetmap-carto.lua -d gis -r xml <(echo '<osm version="0.6"/>')
     - name: Create indexes
       run: psql -1Xq -v ON_ERROR_STOP=1 -d gis -f indexes.sql
+    - name: Load empty shapefiles
+      run: scripts/get-external-data.py --no-update --cache -D scripts/empty_files
+    - name: Test queries are valid
+      run: scripts/test-queries.py project.mml
