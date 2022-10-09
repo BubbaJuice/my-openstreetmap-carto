@@ -780,6 +780,56 @@ Layer:
     properties:
       cache-features: true
       minzoom: 10
+  
+  - id: highway-area-casing
+    geometry: polygon
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way,
+            COALESCE(
+              ('highway_' || (CASE WHEN highway IN ('pedestrian', 'footway', 'service', 'platform') THEN highway END)),
+              ('highway_area_' || (tags->'area:highway')),
+              ('railway_' || (CASE WHEN (railway IN ('platform')
+                              AND (tags->'location' NOT IN ('underground') OR (tags->'location') IS NULL)
+                              AND (tunnel NOT IN ('yes', 'building_passage') OR tunnel IS NULL)
+                              AND (covered NOT IN ('yes') OR covered IS NULL))
+                              THEN railway END))
+            ) AS feature
+          FROM planet_osm_polygon
+          WHERE highway IN ('pedestrian', 'footway', 'service', 'platform')
+            OR (tags->'area:highway') in ('footway', 'pedestrian')
+            OR (railway IN ('platform')
+                AND (tags->'location' NOT IN ('underground') OR (tags->'location') IS NULL)
+                AND (tunnel NOT IN ('yes', 'building_passage') OR tunnel IS NULL)
+                AND (covered NOT IN ('yes') OR covered IS NULL))
+          ORDER BY COALESCE(layer,0), way_area DESC
+        ) AS highway_area_casing
+      properties:
+      minzoom: 14
+
+  - id: road-highway-area-casing
+    geometry: polygon
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way,
+            COALESCE(
+              ('highway_' || (CASE WHEN highway IN ('motorway', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'motorway_link', 'primary_link', 'secondary_link', 'tertiary_link') THEN highway END)),
+              ('highway_area_')
+            ) AS feature
+          FROM planet_osm_polygon
+          WHERE highway IN ('motorway', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'motorway_link', 'primary_link', 'secondary_link', 'tertiary_link')
+            OR (tags->'area:highway') in ('motorway', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'motorway_link', 'primary_link', 'secondary_link', 'tertiary_link')
+          ORDER BY COALESCE(layer,0), way_area DESC
+        ) AS road_highway_area_casing
+      properties:
+      minzoom: 14
+
   - id: highway-area-fill
     # FIXME: No geometry?
     <<: *extents
