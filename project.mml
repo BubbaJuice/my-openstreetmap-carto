@@ -54,6 +54,7 @@ Stylesheet:
   - style/admin.mss
   - style/addressing.mss
   - style/golf.mss
+  - style/tourism.mss
 Layer:
   - id: landcover-low-zoom
     geometry: polygon
@@ -363,6 +364,12 @@ Layer:
             way, man_made
           FROM planet_osm_polygon
           WHERE man_made IN ('pier', 'breakwater', 'groyne')
+          ORDER BY CASE
+              WHEN man_made = 'pier' THEN 3
+              WHEN man_made = 'groyne' THEN 2
+              WHEN man_made = 'breakwater' THEN 1
+              ELSE 0
+            END ASC
         ) AS piers_poly
     properties:
       minzoom: 12
@@ -376,6 +383,12 @@ Layer:
             way, man_made
           FROM planet_osm_line
           WHERE man_made IN ('pier', 'breakwater', 'groyne')
+          ORDER BY CASE
+              WHEN man_made = 'pier' THEN 3
+              WHEN man_made = 'groyne' THEN 2
+              WHEN man_made = 'breakwater' THEN 1
+              ELSE 0
+            END ASC
         ) AS piers_line
     properties:
       minzoom: 12
@@ -533,22 +546,6 @@ Layer:
         ) AS landuse_overlay
     properties:
       minzoom: 8
-  - id: tourism-boundary
-    geometry: polygon
-    <<: *extents
-    Datasource:
-      <<: *osm2pgsql
-      table: |-
-        (SELECT
-            way,
-            way_area/NULLIF(POW(!scale_denominator!*0.001*0.28,2),0) AS way_pixels,
-            tourism
-          FROM planet_osm_polygon
-          WHERE tourism = 'theme_park'
-            OR tourism = 'zoo'
-        ) AS tourism_boundary
-    properties:
-      minzoom: 10
   - id: barriers
     geometry: linestring
     <<: *extents
@@ -831,7 +828,7 @@ Layer:
       minzoom: 14
 
   - id: highway-area-fill
-    # FIXME: No geometry?
+    geometry: polygon
     <<: *extents
     Datasource:
       <<: *osm2pgsql
@@ -1065,6 +1062,40 @@ Layer:
         ) AS guideways
     properties:
       minzoom: 11
+  - id: roller-coaster-gap-fill
+    geometry: linestring
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way,
+            CASE WHEN (tunnel = 'yes' OR tunnel = 'building_passage' OR covered = 'yes' OR tags->'indoor' = 'yes') THEN 'yes' ELSE 'no' END AS tunnel,
+            CASE WHEN (bridge = 'yes' OR bridge = 'covered' OR bridge = 'viaduct') THEN 'yes' ELSE 'no' END AS bridge
+          FROM planet_osm_line
+          WHERE tags @> 'roller_coaster=>track' AND railway IS NULL
+        ) AS roller_coaster
+    properties:
+      minzoom: 15
+  - id: roller-coaster
+    geometry: linestring
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way,
+            COALESCE(layer,0) AS layernotnull,
+            CASE WHEN (tunnel = 'yes' OR tunnel = 'building_passage' OR covered = 'yes' OR tags->'indoor' = 'yes') THEN 'yes' ELSE 'no' END AS tunnel,
+            CASE WHEN (bridge = 'yes' OR bridge = 'covered' OR bridge = 'viaduct') THEN 'yes' ELSE 'no' END AS bridge
+          FROM planet_osm_line
+          WHERE tags @> 'roller_coaster=>track' AND railway IS NULL
+          ORDER BY
+            layernotnull -- put bottom layered track first
+        ) AS roller_coaster
+    properties:
+      group-by: layernotnull
+      minzoom: 15
   - id: entrances
     geometry: point
     <<: *extents
@@ -1214,6 +1245,22 @@ Layer:
         ) AS power_line
     properties:
       minzoom: 14
+  - id: tourism-boundary
+    geometry: polygon
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way,
+            way_area/NULLIF(POW(!scale_denominator!*0.001*0.28,2),0) AS way_pixels,
+            tourism
+          FROM planet_osm_polygon
+          WHERE tourism = 'theme_park'
+            OR tourism = 'zoo'
+        ) AS tourism_boundary
+    properties:
+      minzoom: 10
   - id: protected-areas
     geometry: polygon
     <<: *extents
@@ -1626,14 +1673,14 @@ Layer:
                 'amenity_' || CASE WHEN amenity IN ('parking') AND (tags->'parking' NOT IN ('underground') OR (tags->'parking') IS NULL) THEN amenity END,
                 'amenity_' || CASE WHEN amenity IN ('parking_entrance')
                                         AND tags->'parking' IN ('multi-storey', 'underground')
-                                        AND (access IS NULL OR access NOT IN ('private', 'no'))
+                                        AND (access IS NULL OR access NOT IN ('private', 'no', 'customers', 'permit', 'delivery'))
                                         AND way_area IS NULL
                                    THEN amenity END,
                 'tourism_' || CASE WHEN tourism IN ('viewpoint', 'attraction') THEN tourism END,
                 'place_' || CASE WHEN place IN ('locality') AND way_area IS NULL THEN place END,
                 'golf_' || CASE WHEN tags->'golf' IN ('hole', 'pin') THEN tags->'golf' END
               ) AS feature,
-              access,
+              CASE WHEN access IN ('private', 'no', 'customers', 'permit', 'delivery') THEN 'restricted' ELSE 'yes' END AS int_access,
               CASE
                 WHEN "natural" IN ('peak', 'volcano', 'saddle') 
                      OR tags->'mountain_pass' = 'yes' THEN
@@ -2301,7 +2348,7 @@ Layer:
               'man_made_' || CASE WHEN man_made IN ('cross') AND way_area IS NULL THEN man_made END,
               'barrier_' || CASE WHEN barrier IN ('bollard', 'gate', 'lift_gate', 'swing_gate', 'block', 'log', 'cattle_grid', 'stile', 'motorcycle_barrier', 'cycle_barrier', 'full-height_turnstile', 'turnstile', 'kissing_gate') THEN barrier END
             )  AS feature,
-            access,
+            CASE WHEN access IN ('private', 'no', 'customers', 'permit', 'delivery') THEN 'restricted' ELSE 'yes' END AS int_access,
             way_area,
             way_area/NULLIF(POW(!scale_denominator!*0.001*0.28,2),0) AS way_pixels
             FROM
