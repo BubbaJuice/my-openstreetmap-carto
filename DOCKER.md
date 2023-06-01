@@ -18,7 +18,7 @@ You need sufficient disk space of _several Gigabytes_. Docker creates a disk ima
 If you are eager to get started here is an overview over the necessary steps.
 Read on below to get the details.
 
-* `git clone https://github.com/gravitystorm/openstreetmap-carto.git` to clone openstreetmap-carto repository into a directory on your host system
+* `git clone https://github.com/BubbaJuice/my-openstreetmap-carto.git` to clone openstreetmap-carto repository into a directory on your host system
 * download OpenStreetMap data in osm.pbf format to a file `data.osm.pbf` and place it within the openstreetmap-carto directory (for example some small area from [Geofabrik](https://download.geofabrik.de/))
 * If necessary, `sudo service postgresql stop` to make sure you don't have currently running a native PostgreSQL server which would conflict with Docker's PostgreSQL server.
 * `docker-compose up import` to import the data (only necessary the first time or when you change the data file). Additionally you can set import options through [environment variables](#Importing-data). More on that [later](#Hands-on-approach)
@@ -29,7 +29,7 @@ Read on below to get the details.
 
 ## Repositories
 
-Instructions above will clone main OpenStreetMap Carto repository. To test your own changes you should [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) gravitystorm/openstreetmap-carto repository and [clone your fork](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository).
+Instructions above will clone main OpenStreetMap Carto repository. To test your own changes you should [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) BubbaJuice/my-openstreetmap-carto repository and [clone your fork](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository).
 
 This OpenStreetMap Carto repository needs to be a directory that is shared between your host system and the Docker virtual machine. Home directories are shared by default; if your repository is in another place you need to add this to the Docker sharing list (e.g. macOS: Docker Preferences > File Sharing; Windows: Docker Settings > Shared Drives).
 
