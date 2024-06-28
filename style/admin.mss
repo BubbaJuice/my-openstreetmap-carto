@@ -473,6 +473,30 @@ Then all three layers are added to the rendering with comp-op: darken, so that t
   }
 }
 
+#leisure_park_boundary {
+    [zoom >= 14] {
+      [way_pixels > 750] {
+        // inner line
+        ::wideline {
+          opacity: 0.3;
+          line-color: @park-boundary;
+          line-join: round;
+          line-cap: round;
+          line-width: 6;
+          line-offset: -2;
+        }
+        // outer line
+        ::narrowline {
+          opacity: 0.3;
+          line-width: 2;
+          line-color: @park-boundary;
+          line-join: round;
+          line-cap: round;
+        }
+      }
+    }
+  }
+
 #protected-areas-text[zoom >= 13][way_pixels > 192000] {
   text-name: "[name]";
   text-face-name: @book-fonts;

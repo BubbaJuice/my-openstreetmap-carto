@@ -147,6 +147,30 @@ Layer:
     properties:
       cache-features: true
       minzoom: 10
+  - id: gravel_surface
+    geometry: polygon
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way, way_pixels,
+            COALESCE(surface) AS feature
+          FROM (SELECT
+            way, COALESCE(name, '') AS name,
+            ('surface_' || (CASE WHEN (tags->'surface') IN ('gravel') THEN tags->'surface' ELSE NULL END)) AS surface,
+            way_area/NULLIF(POW(!scale_denominator!*0.001*0.28,2),0) AS way_pixels,
+            way_area
+          FROM planet_osm_polygon
+            WHERE (surface IN ('gravel')
+              OR (tags->'area') IN ('yes'))
+              AND way_area > 1*!pixel_width!::real*!pixel_height!::real
+          ) AS gravel_surface
+          ORDER BY way_area DESC, feature
+        ) AS features
+    properties:
+      cache-features: true
+      minzoom: 10
   - id: landcover-line
     geometry: linestring
     <<: *extents
@@ -266,6 +290,56 @@ Layer:
         ) AS ocean
     properties:
       minzoom: 10
+    
+  - id: highway-area-casing
+    geometry: polygon
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way,
+            COALESCE(
+              ('highway_' || (CASE WHEN highway IN ('pedestrian', 'footway', 'service', 'platform') THEN highway END)),
+              ('highway_area_' || (tags->'area:highway')),
+              ('railway_' || (CASE WHEN (railway IN ('platform')
+                              AND (tags->'location' NOT IN ('underground') OR (tags->'location') IS NULL)
+                              AND (tunnel NOT IN ('yes', 'building_passage') OR tunnel IS NULL)
+                              AND (covered NOT IN ('yes') OR covered IS NULL))
+                              THEN railway END))
+            ) AS feature
+          FROM planet_osm_polygon
+          WHERE highway IN ('pedestrian', 'footway', 'service', 'platform')
+            OR (tags->'area:highway') in ('footway', 'pedestrian')
+            OR (railway IN ('platform')
+                AND (tags->'location' NOT IN ('underground') OR (tags->'location') IS NULL)
+                AND (tunnel NOT IN ('yes', 'building_passage') OR tunnel IS NULL)
+                AND (covered NOT IN ('yes') OR covered IS NULL))
+          ORDER BY COALESCE(layer,0), way_area DESC
+        ) AS highway_area_casing
+      properties:
+      minzoom: 14
+
+  - id: road-highway-area-casing
+    geometry: polygon
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way,
+            COALESCE(
+              ('highway_' || (CASE WHEN highway IN ('motorway', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'motorway_link', 'primary_link', 'secondary_link', 'tertiary_link') THEN highway END)),
+              ('highway_area_')
+            ) AS feature
+          FROM planet_osm_polygon
+          WHERE highway IN ('motorway', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'motorway_link', 'primary_link', 'secondary_link', 'tertiary_link')
+            OR (tags->'area:highway') in ('motorway', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'motorway_link', 'primary_link', 'secondary_link', 'tertiary_link')
+          ORDER BY COALESCE(layer,0), way_area DESC
+        ) AS road_highway_area_casing
+      properties:
+      minzoom: 14
+
   - id: landcover-area-symbols
     geometry: polygon
     <<: *extents
@@ -419,27 +493,6 @@ Layer:
         ) AS bridge
     properties:
       minzoom: 12
-  - id: buildings
-    geometry: polygon
-    <<: *extents
-    Datasource:
-      <<: *osm2pgsql
-      table: |-
-        (SELECT
-            way,
-            building,
-            amenity,
-            aeroway,
-            aerialway,
-            tags->'public_transport' as public_transport
-          FROM planet_osm_polygon
-          WHERE building IS NOT NULL
-            AND building != 'no'
-            AND way_area > 1*!pixel_width!::real*!pixel_height!::real
-          ORDER BY COALESCE(layer,0), way_area DESC
-        ) AS buildings
-    properties:
-      minzoom: 14
   - id: tunnels
     geometry: linestring
     <<: *extents
@@ -546,44 +599,6 @@ Layer:
         ) AS landuse_overlay
     properties:
       minzoom: 8
-  - id: barriers
-    geometry: linestring
-    <<: *extents
-    Datasource:
-      <<: *osm2pgsql
-      table: |-
-        (SELECT
-            way, COALESCE(historic, barrier) AS feature
-          FROM
-            (SELECT way,
-              ('barrier_' || (CASE WHEN barrier IN ('chain', 'city_wall', 'ditch', 'fence', 'guard_rail',
-                    'handrail', 'hedge', 'retaining_wall', 'wall') THEN barrier END)) AS barrier,
-              ('historic_' || (CASE WHEN historic = 'citywalls' THEN historic END)) AS historic
-              FROM
-                (SELECT
-                    way,
-                    historic,
-                    barrier,
-                    waterway
-                  FROM planet_osm_polygon
-                  WHERE way && !bbox!
-                UNION ALL
-                SELECT
-                    way,
-                    historic,
-                    barrier,
-                    waterway
-                  FROM planet_osm_line
-                  WHERE way && !bbox!
-                ) _
-              WHERE barrier IN ('chain', 'city_wall', 'ditch', 'fence', 'guard_rail',
-                  'handrail', 'hedge', 'retaining_wall', 'wall')
-              OR historic = 'citywalls'
-              AND (waterway IS NULL OR waterway NOT IN ('river', 'canal', 'stream', 'drain', 'ditch'))
-          ) AS features
-        ) AS line_barriers
-    properties:
-      minzoom: 15
   - id: cliffs
     geometry: linestring
     <<: *extents
@@ -777,56 +792,6 @@ Layer:
     properties:
       cache-features: true
       minzoom: 10
-  
-  - id: highway-area-casing
-    geometry: polygon
-    <<: *extents
-    Datasource:
-      <<: *osm2pgsql
-      table: |-
-        (SELECT
-            way,
-            COALESCE(
-              ('highway_' || (CASE WHEN highway IN ('pedestrian', 'footway', 'service', 'platform') THEN highway END)),
-              ('highway_area_' || (tags->'area:highway')),
-              ('railway_' || (CASE WHEN (railway IN ('platform')
-                              AND (tags->'location' NOT IN ('underground') OR (tags->'location') IS NULL)
-                              AND (tunnel NOT IN ('yes', 'building_passage') OR tunnel IS NULL)
-                              AND (covered NOT IN ('yes') OR covered IS NULL))
-                              THEN railway END))
-            ) AS feature
-          FROM planet_osm_polygon
-          WHERE highway IN ('pedestrian', 'footway', 'service', 'platform')
-            OR (tags->'area:highway') in ('footway', 'pedestrian')
-            OR (railway IN ('platform')
-                AND (tags->'location' NOT IN ('underground') OR (tags->'location') IS NULL)
-                AND (tunnel NOT IN ('yes', 'building_passage') OR tunnel IS NULL)
-                AND (covered NOT IN ('yes') OR covered IS NULL))
-          ORDER BY COALESCE(layer,0), way_area DESC
-        ) AS highway_area_casing
-      properties:
-      minzoom: 14
-
-  - id: road-highway-area-casing
-    geometry: polygon
-    <<: *extents
-    Datasource:
-      <<: *osm2pgsql
-      table: |-
-        (SELECT
-            way,
-            COALESCE(
-              ('highway_' || (CASE WHEN highway IN ('motorway', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'motorway_link', 'primary_link', 'secondary_link', 'tertiary_link') THEN highway END)),
-              ('highway_area_')
-            ) AS feature
-          FROM planet_osm_polygon
-          WHERE highway IN ('motorway', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'motorway_link', 'primary_link', 'secondary_link', 'tertiary_link')
-            OR (tags->'area:highway') in ('motorway', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service', 'motorway_link', 'primary_link', 'secondary_link', 'tertiary_link')
-          ORDER BY COALESCE(layer,0), way_area DESC
-        ) AS road_highway_area_casing
-      properties:
-      minzoom: 14
-
   - id: highway-area-fill
     geometry: polygon
     <<: *extents
@@ -858,6 +823,65 @@ Layer:
             OR aeroway IN ('runway', 'taxiway', 'helipad')
           ORDER BY COALESCE(layer,0), way_area desc
         ) AS highway_area_fill
+    properties:
+      minzoom: 14
+  - id: barriers
+    geometry: linestring
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way, COALESCE(historic, barrier) AS feature
+          FROM
+            (SELECT way,
+              ('barrier_' || (CASE WHEN barrier IN ('chain', 'city_wall', 'ditch', 'fence', 'guard_rail',
+                    'handrail', 'hedge', 'retaining_wall', 'wall') THEN barrier END)) AS barrier,
+              ('historic_' || (CASE WHEN historic = 'citywalls' THEN historic END)) AS historic
+              FROM
+                (SELECT
+                    way,
+                    historic,
+                    barrier,
+                    waterway
+                  FROM planet_osm_polygon
+                  WHERE way && !bbox!
+                UNION ALL
+                SELECT
+                    way,
+                    historic,
+                    barrier,
+                    waterway
+                  FROM planet_osm_line
+                  WHERE way && !bbox!
+                ) _
+              WHERE barrier IN ('chain', 'city_wall', 'ditch', 'fence', 'guard_rail',
+                  'handrail', 'hedge', 'retaining_wall', 'wall')
+              OR historic = 'citywalls'
+              AND (waterway IS NULL OR waterway NOT IN ('river', 'canal', 'stream', 'drain', 'ditch'))
+          ) AS features
+        ) AS line_barriers
+    properties:
+      minzoom: 15
+  - id: buildings
+    geometry: polygon
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way,
+            building,
+            amenity,
+            aeroway,
+            aerialway,
+            tags->'public_transport' as public_transport
+          FROM planet_osm_polygon
+          WHERE building IS NOT NULL
+            AND building != 'no'
+            AND way_area > 1*!pixel_width!::real*!pixel_height!::real
+          ORDER BY COALESCE(layer,0), way_area DESC
+        ) AS buildings
     properties:
       minzoom: 14
   - id: roads-fill
@@ -1164,6 +1188,30 @@ Layer:
     properties:
       minzoom: 1
       maxzoom: 3
+  - id: leisure_park_boundary
+    geometry: polygon
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way, way_pixels, is_building,
+            leisure AS feature
+          FROM (SELECT
+            way, COALESCE(name, '') AS name,
+            ('leisure_park_' || (CASE WHEN (tags->'leisure') IN ('park') THEN tags->'leisure' ELSE NULL END)) AS leisure,
+            way_area/NULLIF(POW(!scale_denominator!*0.001*0.28,2),0) AS way_pixels,
+            CASE WHEN building = 'no' OR building IS NULL THEN 'no' ELSE 'yes' END AS is_building,
+            way_area
+          FROM planet_osm_polygon
+            WHERE (leisure IN ('park'))
+              AND way_area > 1*!pixel_width!::real*!pixel_height!::real
+          ) AS leisure_park_boundary
+          ORDER BY way_area DESC, feature
+        ) AS features
+    properties:
+      cache-features: true
+      minzoom: 10
   - id: admin-low-zoom
     geometry: linestring
     <<: *extents

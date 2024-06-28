@@ -22,7 +22,7 @@
 @commercial-line: #d1b2b0;  // Lch(75,12,25)
 @industrial: #ebdbe8;       // Lch(89,9,330) (Also used for railway, wastewater_plant)
 @industrial-line: #c6b3c3;  // Lch(75,11,330) (Also used for railway-line, wastewater_plant-line)
-@farmland: #eef0d5;         // Lch(94,14,112)
+@farmland: #eaedc2;         // Lch(234,237,194)
 @farmland-line: #c7c9ae;    // Lch(80,14,112)
 @farmyard: #f5dcba;         // Lch(89,20,80)
 @farmyard-line: #d1b48c;    // Lch(75,25,80)
@@ -68,6 +68,18 @@
 @track: @pitch;
 @stadium: @leisure; // also sports_centre
 @golf_course: @campsite;
+
+#gravel_surface[zoom >= 10] {
+  polygon-fill: @gravel;
+  [zoom >= 13] {
+    polygon-pattern-file: url('symbols/beach.png');
+    polygon-pattern-alignment: global;
+  }
+  [way_pixels > 750] {
+    line-width: 0.5;
+    line-color: darken(@gravel, 20%);
+  }
+}
 
 #landcover-low-zoom[zoom < 10],
 #landcover[zoom >= 10] {
