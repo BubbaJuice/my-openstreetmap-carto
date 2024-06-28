@@ -5,10 +5,12 @@
 @forest: #add19e;       // Lch(80,30,135)
 @forest-text: #46673b;  // Lch(40,30,135)
 @park: #c8facc;         // Lch(94,30,145)
+@park-boundary: #90fc99;
 @allotments: #c9e1bf;   // Lch(87,20,135)
 @orchard: #aedfa3; // also vineyard, plant_nursery
 @hedge: @forest;       // Lch(80,30,135)
 @shrubbery: #b4d7a2;
+@gravel: #e6e3dc;
 
 // --- "Base" landuses ---
 

@@ -22,11 +22,9 @@
 @taxiway-fill: @aeroway-fill;
 @helipad-fill: @aeroway-fill;
 @access-marking: #eaeaea;
-@access-marking-primary: #f0f0f0;
-@access-marking-secondary: #e4e4e4;
-@access-marking-white-unpaved: #e0e0e0;
-@access-marking-road: #f0f0f0;
-@access-marking-living-street: #d4d4d4;
+@access-marking-living-street: #cccccc;
+@area-highway-road-fill: #bbbbbf;
+@area-highway-footway-fill: #e0e0e0;
 
 @default-casing: white;
 @tertiary-casing: #8f8f8f;
@@ -286,6 +284,8 @@
 @paths-background-width:          1;
 @paths-bridge-casing-width:       0.5;
 @paths-tunnel-casing-width:       1;
+
+@mini-roundabout-width:           4;
 
 @junction-text-color:             #960000;
 @halo-color-for-minor-road:       white;

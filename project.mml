@@ -163,7 +163,7 @@ Layer:
             way_area
           FROM planet_osm_polygon
             WHERE (surface IN ('gravel')
-              OR (tags->'area') IN ('yes'))
+              AND (tags->'area') IN ('yes'))
               AND way_area > 1*!pixel_width!::real*!pixel_height!::real
           ) AS gravel_surface
           ORDER BY way_area DESC, feature
