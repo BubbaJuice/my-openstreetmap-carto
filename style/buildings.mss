@@ -12,6 +12,7 @@
 
 #buildings {
   [zoom >= 14] {
+    polygon-opacity: 0.6;
     polygon-fill: @building-low-zoom;
     polygon-clip: false;
     [zoom >= 15] {
@@ -33,6 +34,9 @@
           polygon-fill: @building-major-fill;
         }
       }
+    }
+    [zoom >= 18][building='roof'] {
+      polygon-opacity: 0.4;
     }
   }
 }

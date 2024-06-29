@@ -5,9 +5,12 @@
 @forest: #add19e;       // Lch(80,30,135)
 @forest-text: #46673b;  // Lch(40,30,135)
 @park: #c8facc;         // Lch(94,30,145)
+@park-boundary: #90fc99;
 @allotments: #c9e1bf;   // Lch(87,20,135)
 @orchard: #aedfa3; // also vineyard, plant_nursery
 @hedge: @forest;       // Lch(80,30,135)
+@shrubbery: #b4d7a2;
+@gravel: #e6e3dc;
 
 // --- "Base" landuses ---
 
@@ -21,7 +24,7 @@
 @commercial-line: #d1b2b0;  // Lch(75,12,25)
 @industrial: #ebdbe8;       // Lch(89,9,330) (Also used for railway, wastewater_plant)
 @industrial-line: #c6b3c3;  // Lch(75,11,330) (Also used for railway-line, wastewater_plant-line)
-@farmland: #eef0d5;         // Lch(94,14,112)
+@farmland: #eaedc2;         // Lch(234,237,194)
 @farmland-line: #c7c9ae;    // Lch(80,14,112)
 @farmyard: #f5dcba;         // Lch(89,20,80)
 @farmyard-line: #d1b48c;    // Lch(75,25,80)
@@ -67,6 +70,18 @@
 @track: @pitch;
 @stadium: @leisure; // also sports_centre
 @golf_course: @campsite;
+
+#gravel_surface[zoom >= 10] {
+  polygon-fill: @gravel;
+  [zoom >= 13] {
+    polygon-pattern-file: url('symbols/beach.png');
+    polygon-pattern-alignment: global;
+  }
+  [way_pixels > 750] {
+    line-width: 0.5;
+    line-color: darken(@gravel, 20%);
+  }
+}
 
 #landcover-low-zoom[zoom < 10],
 #landcover[zoom >= 10] {
@@ -811,6 +826,21 @@
       polygon-pattern-file: url('symbols/scrub.png');
       polygon-pattern-alignment: global;
     }
+  }
+  [natural = 'shrubbery'] {
+      polygon-fill: @shrubbery;
+      [density = 'sparse'] {
+        polygon-pattern-file: url('symbols/shrubbery/sparse.svg');
+        polygon-pattern-alignment: global;
+      }
+      [density = 'medium'] {
+        polygon-pattern-file: url('symbols/shrubbery/medium.svg');
+        polygon-pattern-alignment: global;
+      }
+      [density = 'dense'] {
+        polygon-pattern-file: url('symbols/shrubbery/dense.svg');
+        polygon-pattern-alignment: global;
+      }
   }
 
   //Also landuse = forest, converted in the SQL
