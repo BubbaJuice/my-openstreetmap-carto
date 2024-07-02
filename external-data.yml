@@ -9,7 +9,7 @@ sources:
     # The type of file this source is
     type: shp
     # Where to get it
-    url: https://osmdata.openstreetmap.de/download/simplified-water-polygons-split-3857.zip
+    url: http://host.docker.internal:8000/host/simplified-water-polygons-split-3857.zip
     # The location within the archive
     file: simplified-water-polygons-split-3857/simplified_water_polygons.shp
     archive:
@@ -23,7 +23,7 @@ sources:
         - simplified-water-polygons-split-3857/simplified_water_polygons.shx
   water_polygons:
     type: shp
-    url: https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip
+    url: http://host.docker.internal:8000/host/water-polygons-split-3857.zip
     file: water-polygons-split-3857/water_polygons.shp
     archive:
       format: zip
@@ -35,7 +35,7 @@ sources:
         - water-polygons-split-3857/water_polygons.shx
   icesheet_polygons:
     type: shp
-    url: https://osmdata.openstreetmap.de/download/antarctica-icesheet-polygons-3857.zip
+    url: http://host.docker.internal:8000/host/antarctica-icesheet-polygons-3857.zip
     file: antarctica-icesheet-polygons-3857/icesheet_polygons.shp
     archive:
       format: zip
@@ -47,7 +47,7 @@ sources:
         - antarctica-icesheet-polygons-3857/icesheet_polygons.shx
   icesheet_outlines:
     type: shp
-    url: https://osmdata.openstreetmap.de/download/antarctica-icesheet-outlines-3857.zip
+    url: http://host.docker.internal:8000/host/antarctica-icesheet-outlines-3857.zip
     file: antarctica-icesheet-outlines-3857/icesheet_outlines.shp
     ogropts:
       - "-explodecollections"
@@ -62,7 +62,7 @@ sources:
 
   ne_110m_admin_0_boundary_lines_land:
     type: shp
-    url: https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_boundary_lines_land.zip
+    url: http://host.docker.internal:8000/host/ne_110m_admin_0_boundary_lines_land.zip
     file: ne_110m_admin_0_boundary_lines_land.shp
     ogropts: &ne_opts
       - "--config"

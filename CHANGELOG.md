@@ -1,4 +1,16 @@
-## [Unreleased](https://github.com/gravitystorm/openstreetmap-carto/compare/v5.8.0...master)
+## [Unreleased](https://github.com/gravitystorm/openstreetmap-carto/compare/v5.8.0...BubbaJuice:my-openstreetmap-carto:master)
+### Changes
+- Added park boundary
+- Added building opacity
+- Added shrubbery
+- Added rendering of area:highway=* including crossings
+- Added survey points
+- Added rendering of surface=gravel + area=yes
+- Added rendering of man_made=survey_point 
+- All committed but unreleased changes in gravitystorm/openstreetmap-carto
+- Added rendering of man_made=manhole
+- Added rendering of highway=street_lamp
+- Added rendering of linear bench ways
 
 ## [v5.8.0](https://github.com/gravitystorm/openstreetmap-carto/compare/v5.7.0...v5.8.0) - 2023-11-26
 ### Changes

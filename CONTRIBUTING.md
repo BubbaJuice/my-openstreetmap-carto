@@ -25,6 +25,12 @@ number of screenshots.
 The images are not intended to replace reviewing changes in Kosmtik or TileMill,
 but to provide an overview.
 
+### Learning about the project
+
+Imagico has made a great graphic on how this project works: 
+
+![image](https://imagico.de/blog/wp-content/uploads/2024/04/osm_map_rendering_carto.png)&copy; Christoph Hormann via [https://imagico.de](https://imagico.de/blog/en/)
+
 ### Previews
 
 Some changes benefit from a review over a wider area and many zooms, where static

@@ -10,7 +10,7 @@
 @orchard: #aedfa3; // also vineyard, plant_nursery
 @hedge: @forest;       // Lch(80,30,135)
 @shrubbery: #b4d7a2;
-@gravel: #e6e3dc;
+@gravel: #d9d5cc;
 
 // --- "Base" landuses ---
 

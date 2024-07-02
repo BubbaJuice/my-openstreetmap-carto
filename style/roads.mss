@@ -2763,6 +2763,52 @@ tertiary is rendered from z10 and is not included in osm_planet_roads. */
     }
   }
 
+  [feature = 'highway_area_footway'][zoom >= 18] {
+    polygon-fill: @area-highway-footway-fill;
+    line-width: 0.5;
+    line-color: darken(@area-highway-footway-fill, 12.5%);
+    [surface = 'tactile_paving'] {
+      polygon-fill: #ffe09c;
+      polygon-pattern-file: url('symbols/tactile_paving.png');
+      polygon-pattern-alignment: global;
+    }
+    [footway = 'crossing'][zoom >= 18] {
+      polygon-pattern-file: url('symbols/crossing_50.png');
+      polygon-pattern-alignment: global;
+      polygon-fill: transparent;
+      [zoom >= 20] {
+        polygon-pattern-file: url('symbols/crossing.png');
+      }
+    }
+  }
+
+  [feature = 'highway_area_cycleway'][zoom >= 18] {
+    polygon-fill: @area-highway-footway-fill;
+    line-width: 0.5;
+    line-color: darken(@area-highway-footway-fill, 12.5%);
+    [surface = 'tactile_paving'] {
+      polygon-fill: #ffe09c;
+      polygon-pattern-file: url('symbols/tactile_paving.png');
+      polygon-pattern-alignment: global;
+    }
+    [cycleway = 'crossing'][zoom >= 18] {
+      polygon-pattern-file: url('symbols/crossing_50.png');
+      polygon-pattern-alignment: global;
+      polygon-fill: transparent;
+      [zoom >= 20] {
+        polygon-pattern-file: url('symbols/crossing.png');
+      }
+    }
+  }
+
+  [feature = 'highway_area_crossing'][zoom >= 18] {
+    polygon-pattern-file: url('symbols/crossing_50.png');
+    polygon-pattern-alignment: global;
+    [zoom >= 20] {
+      polygon-pattern-file: url('symbols/crossing.png');
+    }
+  }  
+
   [feature = 'highway_platform'],
   [feature = 'railway_platform'] {
     [zoom >= 16] {
@@ -2771,12 +2817,6 @@ tertiary is rendered from z10 and is not included in osm_planet_roads. */
       line-cap: round;
       line-join: round;
     }
-  }
-}
-
-#highway-area-casing {
-  [feature = 'highway_area_footway'][zoom >= 18] {
-    polygon-fill: @area-highway-footway-fill;
   }
 }
 
