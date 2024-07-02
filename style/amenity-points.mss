@@ -1602,6 +1602,36 @@
       marker-fill: @man-made-icon;
     }
   }
+  
+  [feature = 'highway_street_lamp']::light {
+    [zoom >= 19] {
+      marker-fill: #efde60;
+      marker-allow-overlap: true;
+      marker-line-width: 0;
+      marker-ignore-placement: true;
+      marker-width: 10;
+      marker-height: 10;
+      marker-opacity: 0.75;
+      [zoom >= 20] {
+        marker-width: 15;
+        marker-height: 15;
+      }
+    }  
+  }
+  [feature = 'highway_street_lamp']::base {
+    [zoom >= 19] {
+      base/marker-fill: #525151;
+      base/marker-allow-overlap: true;
+      base/marker-line-width: 0;
+      base/marker-ignore-placement: true;
+      base/marker-width: 2;
+      base/marker-height: 2;
+      [zoom >= 20] {
+        base/marker-width: 3;
+        base/marker-height: 3;
+      }
+    }  
+  }
 }
 
 /* Note that these layers are also used in water.mss */
