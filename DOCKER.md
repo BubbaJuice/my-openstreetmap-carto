@@ -22,7 +22,8 @@ If you are eager to get started, here is an overview over the necessary steps:
 
 * `git clone https://github.com/BubbaJuice/my-openstreetmap-carto.git` to clone openstreetmap-carto repository into a directory on your host system
 * Download OpenStreetMap data in osm.pbf format to a file `data.osm.pbf` and place it within the openstreetmap-carto directory (for example some small area from [Geofabrik](https://download.geofabrik.de/))
-* If necessary, `sudo service postgresql stop` to make sure you don't have a currently-running native PostgreSQL server which would conflict with Docker's PostgreSQL server.
+* If necessary, `sudo service postgresql stop` (linux) to make sure you don't have a currently-running native PostgreSQL server which would conflict with Docker's PostgreSQL server.
+* For the purposes of this personal repository, the downloading of 1 gb of files will need to be done outside of the project and served locally on port 8000 (this needs to be done daily when `docker-compose up import` is used).
 * `docker-compose up import` to import the data (only necessary the first time or when you change the data file). Additionally, you can set import options through [environment variables](#Importing-data). More on that [later](#Hands-on-approach)
 * `docker-compose up kosmtik` to run the style preview application
 * Browse to [http://127.0.0.1:6789](http://127.0.0.1:6789) to view the output of Kosmtik

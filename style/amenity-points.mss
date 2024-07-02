@@ -448,6 +448,14 @@
     marker-clip: false;
   }
 
+  [feature = 'man_made_manhole'][zoom >= 20] {
+    marker-width: 6;
+    marker-line-width: 0;
+    marker-fill: @man-made-icon;
+    marker-opacity: 0.5;
+    marker-clip: false;
+  }
+
   [feature = 'man_made_mast']["tower:type" != 'lighting'],
   [feature = 'man_made_mast']["tower:type" = 'lighting'][zoom >= 18]   {
     [zoom >= 14][height >= 160],
@@ -1608,7 +1616,47 @@
       marker-fill: @man-made-icon;
     }
   }
+
+  [feature = 'highway_street_lamp']::light {
+    [zoom >= 19] {
+      marker-fill: #efde60;
+      marker-allow-overlap: true;
+      marker-line-width: 0;
+      marker-ignore-placement: true;
+      marker-width: 10;
+      marker-height: 10;
+      marker-opacity: 0.75;
+      [zoom >= 20] {
+        marker-width: 15;
+        marker-height: 15;
+      }
+    }  
+  }
+  [feature = 'highway_street_lamp']::base {
+    [zoom >= 19] {
+      base/marker-fill: #525151;
+      base/marker-allow-overlap: true;
+      base/marker-line-width: 0;
+      base/marker-ignore-placement: true;
+      base/marker-width: 2;
+      base/marker-height: 2;
+      [zoom >= 20] {
+        base/marker-width: 3;
+        base/marker-height: 3;
+      }
+    }  
+  }
 }
+
+#amenity-low-priority-way {
+  [feature = 'amenity_bench'][zoom >= 19]::amenity {
+    marker-file: url('symbols/amenity/bench.svg');
+    marker-fill: @man-made-icon;
+    [int_access = 'restricted'] {
+      marker-opacity: @private-opacity;
+    }
+  }
+}  
 
 /* Note that these layers are also used in water.mss */
 #text-poly-low-zoom[zoom < 10],
