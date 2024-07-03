@@ -1642,6 +1642,94 @@ Layer:
         ) AS county_names
     properties:
       minzoom: 8
+  - id: amenity-low-priority
+    geometry: point
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: &amenity_low_priority_sql |-
+        (SELECT
+            way,
+            name,
+            COALESCE(
+              'railway_' || CASE WHEN railway IN ('level_crossing', 'crossing') AND way_area IS NULL THEN railway END,
+              'amenity_' || CASE WHEN amenity IN ('bench', 'waste_basket', 'waste_disposal') AND way_area IS NULL THEN amenity END,
+              'historic_' || CASE WHEN historic IN ('wayside_cross', 'wayside_shrine') AND way_area IS NULL THEN historic END,
+              'man_made_' || CASE WHEN man_made IN ('cross') AND way_area IS NULL THEN man_made END,
+              'barrier_' || CASE WHEN barrier IN ('bollard', 'gate', 'lift_gate', 'swing_gate', 'block', 'log', 'cattle_grid', 'stile', 'motorcycle_barrier', 'cycle_barrier', 'full-height_turnstile', 'turnstile', 'kissing_gate') THEN barrier END,
+              'highway_' || CASE WHEN highway in ('street_lamp') and way_area IS NULL THEN highway END
+            )  AS feature,
+            CASE WHEN access IN ('private', 'no', 'customers', 'permit', 'delivery') THEN 'restricted' ELSE 'yes' END AS int_access,
+            way_area,
+            way_area/NULLIF(POW(!scale_denominator!*0.001*0.28,2),0) AS way_pixels
+            FROM
+              (SELECT
+                  ST_PointOnSurface(way) AS way,
+                  name,
+                  access,
+                  amenity,
+                  barrier,
+                  highway,
+                  historic,
+                  man_made,
+                  railway,
+                  tags,
+                  way_area
+                FROM planet_osm_polygon
+                WHERE way && !bbox! -- Not ST_PointOnSurface(way) because name might be NULL
+                  AND way_area < 768000*POW(!scale_denominator!*0.001*0.28,2)
+              UNION ALL
+              SELECT
+                  way,
+                  name,
+                  access,
+                  amenity,
+                  barrier,
+                  highway,
+                  historic,
+                  man_made,
+                  railway,
+                  tags,
+                  NULL AS way_area
+                FROM planet_osm_point
+                WHERE way && !bbox!
+              ) _
+            WHERE railway IN ('level_crossing', 'crossing')
+               OR amenity IN ('bench', 'waste_basket', 'waste_disposal')
+               OR historic IN ('wayside_cross', 'wayside_shrine')
+               OR man_made IN ('cross')
+               OR barrier IN ('bollard', 'gate', 'lift_gate', 'swing_gate', 'block', 'log', 'cattle_grid', 'stile', 'motorcycle_barrier', 'cycle_barrier', 'full-height_turnstile', 'turnstile', 'kissing_gate')
+               OR highway IN ('street_lamp')
+            ORDER BY
+              CASE amenity
+                WHEN 'waste_basket' THEN 1
+                WHEN 'waste_disposal' THEN 1
+                WHEN 'bench' THEN 2
+                WHEN NULL THEN 3
+              END DESC,
+              way_pixels DESC NULLS LAST
+          ) AS amenity_low_priority
+    properties:
+      cache-features: true
+      minzoom: 14
+  - id: amenity-low-priority-way
+    geometry: linestring
+    <<: *extents
+    Datasource:
+      <<: *osm2pgsql
+      table: |-
+        (SELECT
+            way,
+            access,
+            COALESCE(
+              'amenity_' || CASE WHEN amenity IN ('bench') THEN amenity END
+            )  AS feature,
+            CASE WHEN access IN ('private', 'no', 'customers', 'permit', 'delivery') THEN 'restricted' ELSE 'yes' END AS int_access
+          FROM planet_osm_line
+          WHERE amenity IN ('bench')
+        ) AS amenity_low_priority_way
+    properties:
+      minzoom: 14
   - id: amenity-points
     geometry: point
     <<: *extents
@@ -2398,94 +2486,6 @@ Layer:
         ) AS protected_areas_text
     properties:
       minzoom: 13
-  - id: amenity-low-priority
-    geometry: point
-    <<: *extents
-    Datasource:
-      <<: *osm2pgsql
-      table: &amenity_low_priority_sql |-
-        (SELECT
-            way,
-            name,
-            COALESCE(
-              'railway_' || CASE WHEN railway IN ('level_crossing', 'crossing') AND way_area IS NULL THEN railway END,
-              'amenity_' || CASE WHEN amenity IN ('bench', 'waste_basket', 'waste_disposal') AND way_area IS NULL THEN amenity END,
-              'historic_' || CASE WHEN historic IN ('wayside_cross', 'wayside_shrine') AND way_area IS NULL THEN historic END,
-              'man_made_' || CASE WHEN man_made IN ('cross') AND way_area IS NULL THEN man_made END,
-              'barrier_' || CASE WHEN barrier IN ('bollard', 'gate', 'lift_gate', 'swing_gate', 'block', 'log', 'cattle_grid', 'stile', 'motorcycle_barrier', 'cycle_barrier', 'full-height_turnstile', 'turnstile', 'kissing_gate') THEN barrier END,
-              'highway_' || CASE WHEN highway in ('street_lamp') and way_area IS NULL THEN highway END
-            )  AS feature,
-            CASE WHEN access IN ('private', 'no', 'customers', 'permit', 'delivery') THEN 'restricted' ELSE 'yes' END AS int_access,
-            way_area,
-            way_area/NULLIF(POW(!scale_denominator!*0.001*0.28,2),0) AS way_pixels
-            FROM
-              (SELECT
-                  ST_PointOnSurface(way) AS way,
-                  name,
-                  access,
-                  amenity,
-                  barrier,
-                  highway,
-                  historic,
-                  man_made,
-                  railway,
-                  tags,
-                  way_area
-                FROM planet_osm_polygon
-                WHERE way && !bbox! -- Not ST_PointOnSurface(way) because name might be NULL
-                  AND way_area < 768000*POW(!scale_denominator!*0.001*0.28,2)
-              UNION ALL
-              SELECT
-                  way,
-                  name,
-                  access,
-                  amenity,
-                  barrier,
-                  highway,
-                  historic,
-                  man_made,
-                  railway,
-                  tags,
-                  NULL AS way_area
-                FROM planet_osm_point
-                WHERE way && !bbox!
-              ) _
-            WHERE railway IN ('level_crossing', 'crossing')
-               OR amenity IN ('bench', 'waste_basket', 'waste_disposal')
-               OR historic IN ('wayside_cross', 'wayside_shrine')
-               OR man_made IN ('cross')
-               OR barrier IN ('bollard', 'gate', 'lift_gate', 'swing_gate', 'block', 'log', 'cattle_grid', 'stile', 'motorcycle_barrier', 'cycle_barrier', 'full-height_turnstile', 'turnstile', 'kissing_gate')
-               OR highway IN ('street_lamp')
-            ORDER BY
-              CASE amenity
-                WHEN 'waste_basket' THEN 1
-                WHEN 'waste_disposal' THEN 1
-                WHEN 'bench' THEN 2
-                WHEN NULL THEN 3
-              END DESC,
-              way_pixels DESC NULLS LAST
-          ) AS amenity_low_priority
-    properties:
-      cache-features: true
-      minzoom: 14
-  - id: amenity-low-priority-way
-    geometry: linestring
-    <<: *extents
-    Datasource:
-      <<: *osm2pgsql
-      table: |-
-        (SELECT
-            way,
-            access,
-            COALESCE(
-              'amenity_' || CASE WHEN amenity IN ('bench') THEN amenity END
-            )  AS feature,
-            CASE WHEN access IN ('private', 'no', 'customers', 'permit', 'delivery') THEN 'restricted' ELSE 'yes' END AS int_access
-          FROM planet_osm_line
-          WHERE amenity IN ('bench')
-        ) AS amenity_low_priority_way
-    properties:
-      minzoom: 14
   - id: text-low-priority
     geometry: point
     <<: *extents
