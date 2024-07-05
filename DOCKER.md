@@ -21,14 +21,26 @@ Docker itself. Otherwise, you need to [install Docker Compose manually](https://
 If you are eager to get started, here is an overview over the necessary steps:
 
 * `git clone https://github.com/BubbaJuice/my-openstreetmap-carto.git` to clone openstreetmap-carto repository into a directory on your host system
-* Download OpenStreetMap data in osm.pbf format to a file `data.osm.pbf` and place it within the openstreetmap-carto directory (for example some small area from [Geofabrik](https://download.geofabrik.de/))
+* Download OpenStreetMap data in osm.pbf format to a file `data.osm.pbf` and place it within the openstreetmap-carto directory (for example some small area from [Geofabrik](https://download.geofabrik.de/) or from a download using [JOSM](https://josm.openstreetmap.de/).)
 * If necessary, `sudo service postgresql stop` (linux) to make sure you don't have a currently-running native PostgreSQL server which would conflict with Docker's PostgreSQL server.
-* For the purposes of this personal repository, the downloading of 1 gb of files will need to be done outside of the project and served locally on port 8000 (this needs to be done daily when `docker-compose up import` is used).
-* `docker-compose up import` to import the data (only necessary the first time or when you change the data file). Additionally, you can set import options through [environment variables](#Importing-data). More on that [later](#Hands-on-approach)
-* `docker-compose up kosmtik` to run the style preview application
-* Browse to [http://127.0.0.1:6789](http://127.0.0.1:6789) to view the output of Kosmtik
-* Ctrl+C to stop the style preview application
-* `docker-compose stop db` to stop the database container
+* For the purposes of this personal repository, the downloading of 1 gb of files will need to be done outside of the project and served locally on port 8000 (this needs to be done daily when `docker-compose up import` is used on the original repo). See [file hosting server](#File-hosting-server) on how to do this. Note: You will need to redownload files from their respective sources if you would like more updated base layer data. Also, this may not work on Linux via the method I am using in Docker as I haven't tested it. If this is the case use the original external-data.yml from gravitystorm/openstreetmap-carto.
+* `docker-compose up import` to import the data (only necessary the first time or when you change the data file). Additionally, you can set import options through [environment variables](#Importing-data). More on that [later](#Hands-on-approach).
+* `docker-compose up kosmtik` to run the style preview application.
+* Browse to [http://127.0.0.1:6789](http://127.0.0.1:6789) to view the output of Kosmtik.
+* Ctrl+C to stop the style preview application.
+* `docker-compose stop db` to stop the database container.
+
+## File hosting server
+
+* Download the following files:
+* [https://osmdata.openstreetmap.de/download/simplified-water-polygons-split-3857.zip](https://osmdata.openstreetmap.de/download/simplified-water-polygons-split-3857.zip)
+* [https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip](https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip)
+* [https://osmdata.openstreetmap.de/download/antarctica-icesheet-polygons-3857.zip](https://osmdata.openstreetmap.de/download/antarctica-icesheet-polygons-3857.zip)
+* [https://osmdata.openstreetmap.de/download/antarctica-icesheet-outlines-3857.zip](https://osmdata.openstreetmap.de/download/antarctica-icesheet-outlines-3857.zip)
+* [https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_boundary_lines_land.zip](https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_boundary_lines_land.zip)
+
+* Move these files to [./server/host](./server/host).
+* Run server.py in [./server](./server) using python.
 
 ## Repositories
 
@@ -39,7 +51,7 @@ This OpenStreetMap Carto repository needs to be a directory that is shared betwe
 ## Importing data
 
 OpenStreetMap Carto needs a database populated with rendering data to work. You first need a data file to import.
-For testing purposes, it's probably easiest to grab a PBF export of OSM data from [Geofabrik](https://download.geofabrik.de
+For testing purposes, it's probably easiest to grab a PBF export of OSM data from [Geofabrik](https://download.geofabrik.de)
 Once you have that file put it into the openstreetmap-carto directory and run `docker-compose up import` in the openstreetmap-carto directory.
 This starts the PostgreSQL container (downloads it if it not exists) and starts a container that runs [osm2pgsql](https://github.com/openstreetmap/osm2pgsql) to import the data. The container is built the first time you run that command if it not exists.
 At startup of the container the script `scripts/docker-startup.sh` is invoked which prepares the database and itself starts osm2pgsql for importing the data. Then the `scripts/get-external-data.py` is called to download and import needed shapefiles.
