@@ -5,7 +5,7 @@
 @service-fill: @residential-fill;
 @living-street-fill: #ededed;
 @pedestrian-fill: #dddde8;
-@raceway-fill: pink;
+@raceway-fill: #ffc0cb;
 @road-fill: #ddd;
 @footway-fill: salmon;
 @footway-fill-noaccess: #bbbbbb;
@@ -17,6 +17,7 @@
 @bridleway-fill-noaccess: #aaddaa;
 @track-fill: #996600;
 @track-fill-noaccess: #e2c5bb;
+@platform-fill: #bbbbbb;
 @aeroway-fill: #bbc;
 @runway-fill: @aeroway-fill;
 @taxiway-fill: @aeroway-fill;
